@@ -289,6 +289,12 @@ npm run test:browser  # 无头浏览器真实点击自检（42 项，需装 Edge
 npm run test:all      # 全跑（没装浏览器时自动跳过那一项，不算失败）
 ```
 
+另有一个**结转跨年实测脚本** `scripts/carry-crossyear-test.mjs`：先 `npm run demo` 起演示实例，
+再 `node scripts/carry-crossyear-test.mjs`。它会从 3 月起连续结转 11 期直到跨过 2026-12 → 2027-01
+年界，每期填充累计产值、逐条断言「累计产值落库、当期产值 = 本期累计 − 上期累计、计提金额按比例
+精确到分、结账锁生效、开累单调递增、跨年链条连续」，12 期共 5 个项目 60 条记录全量核对。
+```
+
 `test:frontend` 是给 period.js 一个内存版 localStorage 直接跑真实模块，覆盖两层期间的
 独立性与回落、期间合法性、结账按哪个期间判锁、开累回退校验取哪一期做基数。
 之所以单独有它：`test:browser` 依赖本机装了 Edge/Chrome，在服务器和 CI 上通常直接跳过，
