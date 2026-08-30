@@ -1,0 +1,33 @@
+{
+  "//": "复制为 config.json 后按需修改；环境变量（FIN_*）优先级高于本文件。",
+
+  "host": "127.0.0.1",
+  "port": 8787,
+
+  "//dataDir": "数据目录，放 fin.db 与 backups；相对路径按 server/ 解析",
+  "dataDir": "data",
+  "publicDir": "public",
+
+  "//orgName": "打印表头「编制单位」的缺省值，例如 XX集团有限公司",
+  "orgName": "",
+
+  "//adminUser": "首次启动时创建的管理员账号；adminPassword 留空则自动生成并打印在控制台",
+  "adminUser": "admin",
+  "adminPassword": "",
+
+  "sessionHours": 12,
+  "//cookieSecure": "通过 HTTPS 访问时设为 true",
+  "cookieSecure": false,
+  "//trustProxy": "在 nginx/caddy 反向代理之后设为 true，日志才记录真实来访 IP",
+  "trustProxy": false,
+
+  "loginMaxAttempts": 8,
+  "loginWindowMinutes": 15,
+
+  "//backupIntervalHours": "自动热备间隔小时数，0 表示关闭",
+  "backupIntervalHours": 24,
+  "backupKeep": 30,
+
+  "maxBodyBytes": 4194304,
+  "maxRowsPerModule": 20000
+}

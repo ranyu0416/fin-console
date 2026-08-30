@@ -1,0 +1,29 @@
+{
+  "name": "fin-console-server",
+  "version": "1.2.0",
+  "private": true,
+  "description": "财务管理台服务端：多用户共享账套、SQLite 持久化、登录鉴权、审计与备份",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "server.js",
+  "scripts": {
+    "build": "node scripts/build-frontend.mjs",
+    "verify": "node scripts/check-esm.mjs && node scripts/verify-build.mjs",
+    "check-esm": "node scripts/check-esm.mjs",
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node scripts/smoke-test.mjs",
+    "test:frontend": "node scripts/frontend-logic-test.mjs",
+    "test:browser": "node scripts/browser-test.mjs",
+    "test:all": "node scripts/run-all-tests.mjs",
+    "demo": "node scripts/demo.mjs",
+    "preflight": "bash deploy/preflight.sh",
+    "new-module": "node scripts/new-module.mjs",
+    "reset-password": "node scripts/reset-password.mjs",
+    "backup": "node scripts/backup-now.mjs",
+    "pack": "node scripts/pack.mjs"
+  },
+  "dependencies": {}
+}

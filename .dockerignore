@@ -1,0 +1,11 @@
+# 构建上下文是 server/ 目录自身，这里排除不需要进镜像的内容。
+# public/ 一定要排除：镜像内会重新构建，避免把宿主机的旧产物带进去。
+data/
+data-demo/
+public/
+dist/
+config.json
+.tmp-*
+node_modules/
+.git/
+*.log

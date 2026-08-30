@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<!-- 财务管理台 · 服务器版外壳。台账逻辑在 app/ 下的 ES 模块中，由 bridge.js 鉴权后动态加载。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>财务管理台</title>
+<link rel="stylesheet" href="app.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+
+<!-- 登录 / 改密层：未通过鉴权时台账不加载 -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="auth-logo">
+        <svg fill="none" height="20" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="20"><rect height="16" rx="2" width="18" x="3" y="4"/><path d="M3 9h18M8 4v5M8 14h4M8 17h7"/></svg>
+      </span>
+      <div>
+        <h1>财务管理台</h1>
+        <p>多模块财务台账 · 服务器版</p>
+      </div>
+    </div>
+
+    <div class="auth-msg" id="authError" style="display:none"></div>
+
+    <form id="loginPanel" autocomplete="on">
+      <div class="fgroup"><label for="loginUser">账号</label>
+        <input id="loginUser" name="username" type="text" autocomplete="username" required></div>
+      <div class="fgroup"><label for="loginPwd">口令</label>
+        <input id="loginPwd" name="password" type="password" autocomplete="current-password" required></div>
+      <button class="btn btn-primary auth-submit" id="btnLogin" type="submit">登录</button>
+    </form>
+
+    <form id="changePanel" style="display:none" autocomplete="off">
+      <div class="auth-msg" id="changeError"></div>
+      <div class="fgroup"><label for="curPwd">当前口令</label>
+        <input id="curPwd" type="password" autocomplete="current-password" required></div>
+      <div class="fgroup"><label for="newPwd1">新口令（至少 8 位，含字母和数字）</label>
+        <input id="newPwd1" type="password" autocomplete="new-password" required></div>
+      <div class="fgroup"><label for="newPwd2">再次输入新口令</label>
+        <input id="newPwd2" type="password" autocomplete="new-password" required></div>
+      <div class="auth-actions">
+        <button class="btn" id="btnChangeCancel" type="button">退出登录</button>
+        <button class="btn btn-primary" id="btnChangeSubmit" type="submit">保存新口令</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="appShell" style="display:none">
+
+
+<div data-page-node-id="GMbBXkkx9a29JpwyOOf8s0" class="offline-tip" id="offlineTip"><!--pnid:YQXAtkpdn8eXPiV5raYGoT-->与服务器连接中断：当前展示最近一次缓存，已暂停写入，请检查网络后刷新</div>
+
+<header data-page-node-id="O0Nkqeh2EghaIML6huelOJ" class="topbar">
+  <div data-page-node-id="UbK5pbwEjuy751MENjATCQ" class="logo">
+    <svg data-page-node-id="4xTSInq4j6lqCsTtuzFhIy" fill="none" height="18" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18"><rect data-page-node-id="zWCNgw7Mg0STuqTmFE2VnG" height="16" rx="2" width="18" x="3" y="4"/><path data-page-node-id="L2hSFgfQZKCxULhtBWbY9d" d="M3 9h18M8 4v5M8 14h4M8 17h7"/></svg>
+  </div>
+  <div data-page-node-id="v4VpqflNG1C3l6rpS4RuxJ">
+    <h1 data-page-node-id="B5iEBIyVi8loKHGmCvMdwW"><!--pnid:2RhjCJi3cqyWOPWlOz42GJ-->财务管理台</h1>
+    <div data-page-node-id="oXMDwiSr4nnZUJjbGd2njd" class="sub" id="subTitle"><!--pnid:UBS6lW2deYQccu9YMI95wy-->财务多模块工作台</div>
+  </div>
+  <div data-page-node-id="3W8yqKi1VH50Wj3Qmr51z2" class="spacer"></div>
+  <span data-page-node-id="G1pVnpsduxKIg0ctrixCby" class="sync-badge" id="syncBadge"><span data-page-node-id="zCd4fI3jlYY3iwAQhW3JWR" class="dot"></span><span data-page-node-id="s8VMInGKmihEBmtb1iwEvR" id="syncText"><!--pnid:njP8qNTPo2FeYr7IUtZICf-->已同步</span></span>
+  <span class="user-chip" id="userChip"></span>
+  <div class="menu-wrap" id="menuExport">
+    <button class="btn btn-sm" id="btnMenuExport">导出 / 打印 ▾</button>
+    <div class="menu">
+      <button type="button" data-act="printMonth">打印当前选择</button>
+      <button type="button" data-act="printAll">打印开累</button>
+      <div class="menu-sep"></div>
+      <button type="button" data-act="xlsMonth">导出当前选择 Excel</button>
+      <button type="button" data-act="xlsAll">导出开累 Excel</button>
+      <div class="menu-sep"></div>
+      <button type="button" data-act="json">导出 JSON 备份</button>
+    </div>
+  </div>
+  <button type="button" class="btn btn-sm" id="btnCarryQuick" title="把上期名册复制到本期，只需填新数字">本月结转</button>
+  <div class="menu-wrap" id="menuMore">
+    <button class="btn btn-sm" id="btnMenuMore">⋯</button>
+    <div class="menu">
+      <button type="button" data-act="carry">本月结转（复制上期名册）</button>
+      <button type="button" data-act="paste">Excel 粘贴导入</button>
+      <div class="menu-sep"></div>
+      <button type="button" data-act="modvis">模块显示设置</button>
+      <button type="button" data-act="newmod" data-admin="1">新建模块</button>
+      <button type="button" data-act="printConfig">打印模块设置</button>
+      <div class="menu-sep"></div>
+      <button type="button" data-act="masterData" data-admin="1">单位 / 项目清单</button>
+      <button type="button" data-act="audit">操作日志</button>
+      <button type="button" data-act="importLocal">导入本机旧数据</button>
+      <button type="button" data-act="serverBackup" data-admin="1">数据备份</button>
+      <button type="button" data-act="users" data-admin="1">账号管理</button>
+      <button type="button" data-act="exportAll" data-admin="1">下载整套账 JSON</button>
+      <div class="menu-sep"></div>
+      <button type="button" data-act="clear" class="danger">清空当前模块数据</button>
+    </div>
+  </div>
+  <button data-page-node-id="yhaaML4FZSLs1FB61vL2Tp" class="btn btn-primary btn-sm" id="btnAdd">
+    <svg data-page-node-id="4zG6jlQdcgVUy6dQDWa2R5" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-width="2.5" viewBox="0 0 24 24" width="14"><path data-page-node-id="s2PjQ1E0G9rw82EAE6efdm" d="M12 5v14M5 12h14"/></svg><!--pnid:bvsPy4LmphwrH4NqxGRP0V-->
+    <span id="addBtnLabel">新增设施</span>
+  </button>
+</header>
+
+<!-- 期间条。两层期间，语义不同，界面上必须分开呈现：
+
+     「查看期间」pbYm  —— 个人视图。我想看哪个月，只影响我自己的筛选、报表口径
+                          与新增记录的预填期间。只读账号也能改。
+
+     「推进账套期间」pbBook —— 全局唯一，代表这套账推进到哪个月。它决定设施摊销 /
+                          固定资产折旧 / 减值准备这类无期间字段的记录归属哪一期，
+                          从而决定结账锁住哪些数据。推进它属于结账动作，需要结账权限。
+
+     以前只有一个期间选择器，用户翻月份等于改全公司状态；而且服务端那个接口
+     只校验登录不校验权限，只读账号也能把所有人的期间改掉。
+     结账仍按「模块 × 期间」全局锁定——锁是账上的事实，不随谁在看哪个月而变。 -->
+<div class="periodbar" id="periodBar">
+  <span class="pb-label">查看期间</span>
+  <input id="pbYm" type="month" title="切换我要查看的月份。只影响自己的界面，不影响其他人">
+  <span class="pb-hint" id="pbHint"></span>
+  <span class="spacer"></span>
+  <button class="btn btn-sm" type="button" id="pbPrev" title="回到上一个月（仅自己可见）">上月</button>
+  <button class="btn btn-sm" type="button" id="pbNext" title="前进到下一个月（仅自己可见）">下月</button>
+  <button class="btn btn-sm btn-primary" type="button" id="pbBook" title="把整套账推进到当前查看的月份。会影响所有人，需要结账权限">推进账套期间</button>
+</div>
+
+<nav data-page-node-id="1ggCAmiYnYtDkaXaIxTOF" class="mod-nav">
+  <button class="mod-tab active" data-mod="__overview" type="button">☰ 总览</button>
+  <span class="nav-sep">计提摊销</span>
+  <button data-page-node-id="msUChAYWPth1oJHNF7aDdG" class="mod-tab" data-mod="facility" type="button">
+    <svg data-page-node-id="iQwUDq43JDKNecC2x04fWK" fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="14"><rect data-page-node-id="90JrX7xBH4szWTHVQqWLdX" height="16" rx="2" width="18" x="3" y="4"/><path data-page-node-id="qgR2boTHAhcD4mnVsJX33h" d="M3 9h18M8 4v5M8 14h4M8 17h7"/></svg><!--pnid:AjLup7r1k8bKyVODyANt6o-->
+    设施摊销
+  </button>
+  <button class="mod-tab" data-mod="levy" type="button">专项费用</button>
+  <button class="mod-tab" data-mod="union" type="button">工会·职工教育经费</button>
+  <button class="mod-tab" data-mod="asset" type="button">固定资产折旧</button>
+  <button class="mod-tab" data-mod="baddebt" type="button">减值准备</button>
+  <button class="mod-tab" data-mod="lvc" type="button">低值易耗品</button>
+  <span class="nav-sep">账务核对</span>
+  <button class="mod-tab" data-mod="balance" type="button">科目余额表</button>
+  <span class="nav-sep">研发人工</span>
+  <button class="mod-tab" data-mod="rnd" type="button">研发费用台账</button>
+  <button class="mod-tab" data-mod="labor" type="button">人工费台账</button>
+  <span class="nav-sep">合同往来</span>
+  <button class="mod-tab" data-mod="contract" type="button">合同台账</button>
+  <button class="mod-tab" data-mod="party" type="button">往来单位台账</button>
+  <button class="mod-tab" data-mod="staffpay" type="button">劳务工资台账</button>
+  <span class="nav-sep">票据资金</span>
+  <button class="mod-tab" data-mod="invoice" type="button">进项发票台账</button>
+  <button class="mod-tab" data-mod="bank" type="button">银行资金台账</button>
+  <button class="mod-tab" data-mod="deposit" type="button">保证金台账</button>
+  <span class="nav-sep">物资机械</span>
+  <button class="mod-tab" data-mod="material" type="button">材料收发存台账</button>
+  <button class="mod-tab" data-mod="machinery" type="button">机械租赁台账</button>
+  <button class="mod-tab" data-mod="consumable" type="button">周转物资台账</button>
+  <button data-page-node-id="Qm21uGVbt9pwFBdrSxRfy5" class="mod-tab soon" data-soon="1" type="button"><!--pnid:yjcWJQ1czJrwoxFvE5Urmf-->资金管理<span data-page-node-id="3XYAwRU9f7gIu8IB8XjJER" class="soon-tag"><!--pnid:fBo7lmeaRi0ophfN4clVF6-->规划中</span></button>
+  <button data-page-node-id="iigBL30I2iFnzFZ2Y026Oz" class="mod-tab soon" data-soon="1" type="button"><!--pnid:IfUWNilD8kb5g4jNQlR7Na-->费用报销<span data-page-node-id="8tzv7DTX4jgLJZECAE6otR" class="soon-tag"><!--pnid:yIfz2jiECa6gPMxTXQP8dC-->规划中</span></button>
+</nav>
+
+<datalist id="unitOptions"></datalist>
+
+<main data-page-node-id="9KI7l8J9AkNz21wRls2F1V" class="wrap">
+
+  <!--pnid:fjL9MUk3Fgd2geXr7ep4Fy--><!-- 总览（v2） -->
+  <section class="card" id="overviewCard">
+    <h2>
+      <svg fill="none" height="16" stroke="var(--primary)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><rect height="16" rx="2" width="18" x="3" y="4"/><path d="M3 9h18M9 13h6M9 17h4"/></svg>
+      总览工作台<span class="hint" id="ovPeriod"></span>
+      <span class="grow"></span>
+      <span class="period-chips">
+        <button type="button" class="chip" data-ym="0">本月</button>
+        <button type="button" class="chip" data-ym="-1">上月</button>
+      </span>
+    </h2>
+    <div class="stats" id="ovStats"></div>
+    <div id="ovTodos"></div>
+  </section>
+
+  <!--pnid:fjL9MUk3Fgd2geXr7ep4Fy--><!-- 今天要处理 -->
+  <section data-page-node-id="hU4zNOA8SLzpb5NJtBY3RY" class="card attention" id="attentionCard" style="display:none">
+    <h2 data-page-node-id="aEAjOJjiD13N7h8UiwkgYt">
+      <svg data-page-node-id="aHXm0j6WR5l6rQFaL8KDrP" fill="none" height="16" stroke="var(--red)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><circle data-page-node-id="N2EcQqJEI7DVoinZrrkM35" cx="12" cy="12" r="9"/><path data-page-node-id="4yvkmBQ3s0dssEYuw1GxKQ" d="M12 7v5l3 3"/></svg><!--pnid:YBzp6ZZIJ2q3snZMJ0xxpU-->
+      今天要处理（<span data-page-node-id="uRVdxDIhHVAE1p7RJh0OE0" id="attentionCount"><!--pnid:Ul01HEuXzSlP4YoH6hy2TD-->0</span>）
+    </h2>
+    <div data-page-node-id="gbelsLfC7ajvYzRivHdwxq" id="attentionList"></div>
+  </section>
+
+  <!--pnid:H1zdlid0sm7J25Lqdvpg9K--><!-- 汇总 -->
+  <section data-page-node-id="oOTOwQL3Pjx4IXdAOdwpyu" class="stats" id="statsSection">
+    <div data-page-node-id="swQ9QvmsvZcp2huXW3EDfQ" class="stat">
+      <div data-page-node-id="hTBHd4x5ehfVPmaRab1Iio" class="label" id="labCount"><!--pnid:HGC23zkTPZw6XruwNAigVB-->设施总数</div>
+      <div data-page-node-id="GMAqh1dd9flqiJxETzOXrl" class="value" id="statCount"><!--pnid:OYHSQRyUHaPczE2hQj5Kz4-->0</div>
+    </div>
+    <div data-page-node-id="9iGMmXubwr4pXtOaFc46L0" class="stat">
+      <div data-page-node-id="zYoyEDtZAn8Hugfg0XaD6o" class="label" id="labCost"><!--pnid:nwMPqXIWnqZtXjftb7V0N0-->原值合计</div>
+      <div data-page-node-id="Zy6t9KPTGUKVGZ7wF3GECT" class="value" id="statCost"><!--pnid:oTvN0n3G36AcuYe07aGkIe-->¥0</div>
+    </div>
+    <div data-page-node-id="ksZButNIfEmnueP9PJISqK" class="stat">
+      <div data-page-node-id="ih0YPdCOktxcCtg7rDBv4v" class="label" id="labAccrued"><!--pnid:uO0Epgied2truS0PJsMXwQ-->开累摊销金额</div>
+      <div data-page-node-id="nZmd07JVzxwY4UxAlhFBHC" class="value" id="statAccrued"><!--pnid:Jxs4haznnqSMvEoriiZpdl-->¥0</div>
+    </div>
+    <div data-page-node-id="nth6Mn7raWfA6uBpKWm1BM" class="stat">
+      <div data-page-node-id="F7uzfxU7zolm8j0c4I5sEh" class="label" id="labNet"><!--pnid:4FQS7rQfb0OSxb0AbvcE0W-->净值合计 / 本期金额</div>
+      <div data-page-node-id="VoNyGNOpMMo3GVDMX9Krfy" class="value"><span data-page-node-id="IgQZ2bhPuVKjqWuZdY4HQj" id="statNet"><!--pnid:n8GP7OyGnDINAupT6KL9In-->¥0</span> <span data-page-node-id="mYmKjvrI9XssHGMIvFfa6G" id="statMonth" style="font-size:13px; color:var(--muted)"><!--pnid:rnu4xLgohe46OU9mLpKoIr-->/ ¥0</span></div>
+    </div>
+  </section>
+
+  <!--pnid:I5qUoJaM7bQ4A3kCLz5btw--><!-- 台账 -->
+  <section data-page-node-id="Jbr82bEPNWaBpadfn2VIyK" class="card" id="tableCard">
+    <h2 data-page-node-id="6Llf2gHLZMsClMde0QCpbF">
+      <svg data-page-node-id="YEb25CEesgY7oEAEKcu6xs" fill="none" height="16" stroke="var(--primary)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path data-page-node-id="mgo6T1AS0vvCDPwTfOTOM" d="M4 6h16M4 12h16M4 18h10"/></svg><!--pnid:YVVygioqcRK4Deh49bxAz5-->
+      <span id="cardTitle">摊销台账</span>
+      <span class="hint" id="cardHint"></span>
+      <span class="grow"></span>
+      <span class="mod-close" id="modClose"></span>
+
+    </h2>
+    <div data-page-node-id="TtN3LQh2CeIAuHaDljQH7r" class="toolbar">
+       <input id="fPeriod" type="month" title="选择当前模块期间">
+      <input data-page-node-id="IDuWw0KWb4KPW04AyUkDxz" id="kw" placeholder="搜索…" type="search">
+      <select id="fUnit"><option value>全部单位</option></select>
+      <span class="period-chips">
+        <button type="button" class="chip" data-ym="0">本月</button>
+        <button type="button" class="chip" data-ym="-1">上月</button>
+      </span>
+      <select data-page-node-id="lhT7IbXUEzRGlTs7GbkHrr" id="fCat"><option value>全部</option></select>
+      <select data-page-node-id="ssBM2uLXVHkso2wGOP8Ems" id="fStatus"><option value>全部</option></select>
+    </div>
+    <div data-page-node-id="rtNcqNCyEVL6jKG5VMA5I9" class="table-scroll">
+      <table data-page-node-id="05M8RudWDaUSY5yLn4WWnH">
+        <thead data-page-node-id="dRM8kMAMhdyjxY1EnfOj6A" id="thead"></thead>
+        <tbody data-page-node-id="yYlDKLjyNYXCXn8189REtj" id="tbody"></tbody>
+      </table>
+      <div data-page-node-id="tm3bcNW4ZxlaSCy5W4IkUT" class="empty" id="emptyBox" style="display:none">暂无记录，点击右上角「新增」开始登记</div>
+    </div>
+  </section>
+
+  <!-- 分类合计（仅支持分组的模块显示） -->
+  <section class="card" id="groupCard" style="display:none">
+    <h2>
+      <svg fill="none" height="16" stroke="var(--primary)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      <span>分类合计</span><span class="hint">（按当前筛选范围，金额单位：元）</span>
+    </h2>
+    <div class="table-scroll"><div class="gs-grid" id="groupBody"></div></div>
+  </section>
+
+</main>
+
+<!--pnid:s7GRLYJvcvkHqHpZbL0MN5--><!-- 新增/编辑弹窗 -->
+<div data-page-node-id="9L1FQwdS7JZuTemRl3pIuK" class="mask" id="mask">
+  <div data-page-node-id="okFxFGhhoPaw5H7iC6RWql" class="modal">
+    <h3 data-page-node-id="SivEHzoCVaLPiwH7CDbenR" id="modalTitle">新增</h3>
+    <form data-page-node-id="Z1OdbOKBRwAAR78yZm66cl" id="form" novalidate>
+      <div id="formBody"></div>
+      <div class="modal-actions">
+        <button data-page-node-id="D2vCn2yGgsPmp22atL2MbY" class="btn" id="btnCancel" type="button">取消</button>
+        <button data-page-node-id="pEkcY0CQlv3a4rwTksnFGN" class="btn btn-primary" id="btnSubmit" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 打印模块设置：仅保存本地的列选择；行范围由“当前选择 / 开累”两个入口决定 -->
+<div class="mask" id="printConfigMask">
+  <div class="modal print-config-modal">
+    <h3>打印模块设置 <span class="hint">选择模块：<select id="printConfigModuleSelect" class="print-config-module-select"></select></span></h3>
+    <div class="preview">可分别设置打印和 Excel 需要的列。行范围仍由“打印当前选择 / 打印开累”或对应 Excel 入口决定。<strong>注意：列设置是全账套共享的，保存后所有账号的打印与导出格式都会跟着变，不只影响你自己。</strong></div>
+    <div id="printConfigBody"></div>
+    <div class="modal-actions">
+      <button class="btn" id="btnPrintConfigCancel" type="button">取消</button>
+      <button class="btn btn-primary" id="btnPrintConfigSave" type="button">保存设置</button>
+    </div>
+  </div>
+</div>
+
+<div data-page-node-id="Esxu0FtDs9mSrln6zw5NUh" id="printArea"></div>
+
+<div data-page-node-id="KowaKfn7xu6IqzfaBBtHWH" class="toast" id="toast"></div>
+</div>
+
+<!-- 管理面板：操作日志 / 账号 / 备份 / 迁移 -->
+<div class="mask" id="adminMask">
+  <div class="modal admin-modal">
+    <h3 id="adminTitle">面板</h3>
+    <div id="adminBody"></div>
+    <div class="modal-actions">
+      <button class="btn" id="btnAdminClose" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="bridgeToast"></div>
+
+<script src="bridge.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

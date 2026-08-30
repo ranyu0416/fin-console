@@ -1,0 +1,52 @@
+# 一键部署：在本文件所在目录执行  docker compose up -d --build
+# 首次启动后用 docker compose logs 查看自动生成的管理员口令（或先设好 FIN_ADMIN_PASSWORD）。
+#
+# 注意容器里 FIN_HOST 必须是 0.0.0.0（而不是 127.0.0.1）——容器内的回环
+# 宿主机是访问不到的。对外的收口靠下面 ports 里的 "127.0.0.1:8787:8787"：
+# 端口只映射到宿主回环，局域网仍然连不上，安全边界在宿主这一层。
+
+services:
+  fin-console:
+    build:
+      # 上下文就是 server/ 目录自身
+      context: .
+      dockerfile: Dockerfile
+    image: fin-console:latest
+    container_name: fin-console
+    restart: unless-stopped
+    ports:
+      # 只暴露到宿主回环，前面再挂 nginx/caddy 做 HTTPS；
+      # 若确实要让局域网直连，改成 "8787:8787"
+      - "127.0.0.1:8787:8787"
+    environment:
+      FIN_HOST: 0.0.0.0
+      FIN_PORT: "8787"
+      FIN_DATA_DIR: /data
+      # 打印表头「编制单位」的默认值
+      FIN_ORG_NAME: ""
+      # 首次启动的管理员账号；口令留空则自动生成并打印在容器日志里
+      FIN_ADMIN_USER: admin
+      FIN_ADMIN_PASSWORD: ""
+      # 通过 HTTPS 反向代理访问时，把下面两项都设为 1
+      FIN_COOKIE_SECURE: "0"
+      FIN_TRUST_PROXY: "0"
+      FIN_SESSION_HOURS: "12"
+      FIN_BACKUP_INTERVAL_HOURS: "24"
+      FIN_BACKUP_KEEP: "30"
+      TZ: Asia/Shanghai
+    volumes:
+      # 账套数据与备份都在这个卷里；迁移服务器时整卷搬走即可
+      - fin-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  fin-data:

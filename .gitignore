@@ -1,0 +1,17 @@
+# 运行时数据（不要提交）
+data/
+# 演示实例数据（npm run demo 生成）
+data-demo/
+# 构建产物（由 npm run build 生成）
+public/
+# 截图输出（scripts/screenshot.mjs）
+.shots/
+# 发布件（scripts/pack.mjs 生成，每次重打）
+dist/
+# 现场配置（可能含初始口令）
+config.json
+
+node_modules/
+*.log
+.tmp-*
+.DS_Store

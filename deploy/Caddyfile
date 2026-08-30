@@ -1,0 +1,75 @@
+# 财务管理台 · Caddy 反向代理（云服务器最省事的 HTTPS 方案）
+#
+# 为什么给了 nginx 还给 Caddy：Caddy 会自动申请并续期 Let's Encrypt 证书，
+# 不用装 certbot、不用配 cron、不用手填证书路径。云服务器上有公网域名时，
+# 从零到 HTTPS 通常只要下面这几行 + 一条 systemctl。
+#
+# 安装（Ubuntu / Debian）：
+#   sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+#     | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+#   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+#     | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+#   sudo apt update && sudo apt install -y caddy
+#
+# 部署：
+#   sudo cp /opt/fin-console/server/deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo nano /etc/caddy/Caddyfile          # 改域名和邮箱
+#   sudo systemctl reload caddy
+#
+# 前提：域名的 A 记录已经指向这台服务器，且安全组放行了 80 和 443。
+# 80 端口必须放行——Let's Encrypt 的 HTTP-01 验证走它，只开 443 申不到证书。
+#
+# 证书签发成功后，把 /etc/fin-console.env 里这两项打开并重启服务：
+#   FIN_COOKIE_SECURE=1
+#   FIN_TRUST_PROXY=1
+
+{
+	# 证书快到期时 Let's Encrypt 会往这个邮箱发提醒，填一个真在看的
+	email admin@example.com
+}
+
+fin.example.com {
+	# 自动申请、自动续期、自动跳转 HTTPS，这三件事都不用另外配
+
+	encode gzip
+
+	# --------------------------------------------------------------
+	# 访问范围。默认对公网开放，此时门只有登录页一道。
+	# 只给公司固定 IP 用的话，取消下面注释并换成公司出口的公网 IP
+	# （不是 192.168 内网段——请求到这里时源地址已经是出口 IP 了）：
+	#
+	# @notoffice not remote_ip 203.0.113.45
+	# respond @notoffice "forbidden" 403
+	# --------------------------------------------------------------
+
+	# 健康检查不写访问日志，否则探针每几秒一条会把日志刷满
+	@health path /api/health
+	log_skip @health
+
+	reverse_proxy 127.0.0.1:8787 {
+		# --------------------------------------------------------------
+		# Caddy 默认就把 X-Forwarded-For 设成真实对端地址并覆盖客户端自带的值，
+		# 所以这里不需要像 nginx 那样特意纠正——nginx 常见写法
+		# $proxy_add_x_forwarded_for 是「保留客户端的 XFF 再追加」，
+		# 而应用取第一个元素，于是客户端能自己伪造审计日志里的 IP。
+		#
+		# 但如果这台机器前面还有一层云负载均衡（SLB/CLB/ELB），
+		# 需要显式声明信任它，否则真实客户端 IP 会被负载均衡的地址盖掉：
+		#     trusted_proxies 100.64.0.0/10
+		# 网段填云厂商文档里给的健康检查/转发网段，不要写 0.0.0.0/0。
+		# --------------------------------------------------------------
+
+		# 整套账导出可能比较久
+		transport http {
+			read_timeout 600s
+		}
+	}
+
+	log {
+		output file /var/log/caddy/fin-console.log {
+			roll_size 20mb
+			roll_keep 10
+		}
+	}
+}

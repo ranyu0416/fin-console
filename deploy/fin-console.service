@@ -1,0 +1,54 @@
+# 财务管理台 systemd 单元
+# 安装：
+#   sudo cp /opt/fin-console/server/deploy/fin-console.service /etc/systemd/system/
+#   sudo cp /opt/fin-console/server/deploy/fin-console.env /etc/fin-console.env
+#   sudo chmod 600 /etc/fin-console.env      # 里面有管理员初始口令
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now fin-console
+# 查看日志：journalctl -u fin-console -f
+
+[Unit]
+Description=财务管理台（多模块财务台账服务端）
+Documentation=file:/opt/fin-console/server/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 运行账号：需先执行 sudo useradd -r -s /usr/sbin/nologin finconsole
+User=finconsole
+Group=finconsole
+WorkingDirectory=/opt/fin-console/server
+EnvironmentFile=/etc/fin-console.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+# 服务端收到 SIGTERM 后会 checkpoint 数据库再退出，给足时间
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# --- 安全加固：除数据目录外全部只读 ---
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+# 账套数据与备份的唯一可写路径
+ReadWritePaths=/var/lib/fin-console
+
+# --- 资源上限，防止异常请求拖垮整机 ---
+LimitNOFILE=4096
+MemoryMax=1G
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fin-console
+
+[Install]
+WantedBy=multi-user.target
